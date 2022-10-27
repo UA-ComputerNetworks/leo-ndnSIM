@@ -5,7 +5,6 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/ndnSIM-module.h"
 #include "read-data.h"
-#include "model/ground-station.h"
 
 // for LinkStatusControl::FailLinks and LinkStatusControl::UpLinks
 #include "ns3/ndnSIM/helper/ndn-link-control-helper.hpp"
@@ -15,6 +14,10 @@ namespace ns3 {
 int
 main(int argc, char* argv[])
 {
+  // Load data
+  vector<leo::GroundStation> groundStations = leo::readGroundStations("data/ground_stations.txt");
+
+
   // setting default parameters for PointToPoint links and channels
   Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("1Mbps"));
   Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));

@@ -5,8 +5,7 @@
 
 namespace leo
 {
-std::vector<GroundStation> groundStation;
-std::vector<GroundStation> readGroundStation(string fname);
+  std::vector<leo::GroundStation> readGroundStations(string fname);
 }
 
 #endif // READ_DATA_H
