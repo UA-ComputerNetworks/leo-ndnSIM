@@ -14,11 +14,19 @@ namespace ns3 {
 int
 main(int argc, char* argv[])
 {
-  // Load data
-  vector<leo::GroundStation> groundStations = leo::readGroundStations("data/ground_stations.txt");
+  // Loading data
+  // Importing TLEs
+  vector<leo::Tle> Tles = leo::readTles("data/tles.txt");
+  
+  // Importing ground stations
+  vector<leo::GroundStation> groundStations = 
+    leo::readGroundStations("data/ground_stations.txt", Tles.size());
 
+  // For debug
+  cout << "press any keys to continue";
+  cin.get();
 
-  // setting default parameters for PointToPoint links and channels
+  // Setting default parameters for PointToPoint links and channels
   Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("1Mbps"));
   Config::SetDefault("ns3::PointToPointChannel::Delay", StringValue("10ms"));
   Config::SetDefault("ns3::DropTailQueue<Packet>::MaxSize", StringValue("20p"));

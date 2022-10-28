@@ -3,4 +3,5 @@ def add_scratch_programs(bld):
     obj = bld.create_ns3_program('ndn-leo', all_modules)
     obj.source = ['scratch/ndn-leo.cc',
                   'scratch/read-data.cc',
-                  'scratch/model/ground-station.cc']
+                  'scratch/model/ground-station.cc',
+                  'scratch/model/tle.cc']
