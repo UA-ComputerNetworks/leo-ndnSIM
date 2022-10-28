@@ -2,21 +2,40 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <filesystem>
 #include <vector>
 #include <string>
+#include <regex>
+#include <set>
+#include <tuple>
 #include <boost/algorithm/string.hpp>
 #include "model/ground-station.h"
 #include "model/tle.h"
 #include "model/topo.h"
+#include "ns3/network-module.h"
+#include "ns3/ndnSIM-module.h"
+#include "ns3/ndnSIM/helper/ndn-fib-helper.hpp"
+
 
 using namespace std;
 
-
 namespace leo {
+
+void RemoveRouteAB (ns3::Ptr<ns3::Node> node, string prefix, ns3::Ptr<ns3::Node> otherNode)
+{
+    ns3::ndn::FibHelper::RemoveRoute(node, prefix, otherNode);
+}
+
+void AddRouteAB (ns3::Ptr<ns3::Node> node, string prefix, ns3::Ptr<ns3::Node> otherNode, int metric)
+{
+    ns3::ndn::FibHelper::AddRoute(node, prefix, otherNode, metric);
+}
+
 vector<leo::GroundStation> readGroundStations(string fname, int offset)
 {
     vector<leo::GroundStation> groundStations; 
-    ifstream input( fname );
+    ifstream input(fname);
     string line;
     while(getline(input, line))
     {
@@ -40,7 +59,7 @@ vector<leo::GroundStation> readGroundStations(string fname)
 vector<leo::Tle> readTles(string fname)
 {
     vector<leo::Tle> Tles; 
-    ifstream input( fname );
+    ifstream input(fname);
 
     int orbit_count;
     int sat_count_per_orbit;
@@ -66,17 +85,98 @@ vector<leo::Tle> readTles(string fname)
 vector<leo::Topo> readIsls(string fname)
 {
     vector<leo::Topo> topo; 
-    ifstream input( fname );
+    ifstream input(fname);
     string line;
     while(getline(input, line))
     {
         int uid_1;
         int uid_2;
-        input >> uid_1 >> uid_2;
+        (stringstream) (line) >> uid_1 >> uid_2;
         topo.emplace_back(leo::Topo(uid_1, uid_2));
     }
     cout << "Imported " << topo.size() << " topology entries from " << fname << endl;
     return topo;
 }
+
+void importDynamicState(ns3::NodeContainer nodes, string dname) {
+    // Iterate through the dynamic state directory
+    for (const auto & entry : filesystem::directory_iterator(dname)) {
+        // Extract nanoseconds from file name
+        std::regex rgx(".*fstate_(\\w+)\\.txt.*");
+        smatch match;
+        string full_path = entry.path();
+        if (!std::regex_search(full_path, match, rgx)) continue;
+        double ms = stod(match[1]) / 1000000;
+
+        // Add RemoveRoute schedule by emptying temporary set
+        int current_node;
+        // int destination_node;
+        string prefix;
+        int next_hop;
+
+        // Read each file
+        ifstream input(full_path);
+        string line;
+        while(getline(input, line))
+        {
+            vector<string> result;
+            boost::split(result, line, boost::is_any_of(","));
+            current_node = stoi(result[0]);
+            // destination_node = stoi(result[1]);
+            next_hop = stoi(result[2]);
+            // Add AddRoute schedule
+            prefix = "/uid-" + result[1];
+            // cout << current_node << ", " << prefix << ", " << next_hop << endl;
+            ns3::Simulator::Schedule(ns3::MilliSeconds(ms), &AddRouteAB, nodes.Get(current_node), prefix, nodes.Get(next_hop), 1);
+        }
+    }
+}
+
+/*
+void importDynamicState(ns3::NodeContainer nodes, string dname) {
+    cout << "Importing FIB" << endl;
+    // Alternating states between two adjacent epoch
+    set<tuple<int, int, int> > states[2];
+    int i = 0;
+
+    // Iterate through the dynamic state directory
+    for (const auto & entry : filesystem::directory_iterator(dname)) {
+        // Extract nanoseconds from file name
+        std::regex rgx(".*fstate_(\\w+)\\.txt.*");
+        smatch match;
+        string full_path = entry.path();
+        if (!std::regex_search(full_path, match, rgx)) continue;
+        double ms = stod(match[1]) / 1000000;
+
+        // Add RemoveRoute schedule by emptying temporary set
+        int current_node;
+        int destination_node;
+        string prefix;
+        int next_hop;
+        auto it = states[i].begin();
+        while (it != states[i].end()) {
+            tie(current_node, destination_node, next_hop) = *it;
+            prefix = "/uid-" + destination_node;
+            ns3::Simulator::Schedule(ns3::MilliSeconds(ms), &RemoveRouteAB, nodes.Get(current_node), prefix, nodes.Get(next_hop));
+            states[i].erase(it);
+        }
+
+        // Read each file
+        ifstream input(full_path);
+        string line;
+        while(getline(input, line))
+        {
+            input >> current_node >> destination_node >> next_hop;
+            // Add AddRoute schedule
+            tuple hop = make_tuple(current_node, destination_node, next_hop);
+            if (states[1 - i].find(hop) == states[1 - i].end()) {
+                ns3::Simulator::Schedule(ns3::MilliSeconds(ms), &AddRouteAB, nodes.Get(current_node), prefix, nodes.Get(next_hop), 1);
+            }
+        }
+        // Alternate between states to save computation and memory
+        i = 1 - i;
+    }
+}
+*/
 
 }

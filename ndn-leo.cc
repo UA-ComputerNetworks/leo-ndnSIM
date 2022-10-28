@@ -14,13 +14,6 @@
 
 namespace ns3 {
 
-// Explicitly pick an overloaded function for Schedule
-static void
-RemoveRouteAB (Ptr<Node> node, string prefix, Ptr<Node> otherNode)
-{
-  ndn::FibHelper::RemoveRoute(node, prefix, otherNode);
-}
-
 int
 main(int argc, char* argv[])
 {
@@ -34,10 +27,6 @@ main(int argc, char* argv[])
 
   // Importing topology
   vector<leo::Topo> topos = leo::readIsls("data/isls.txt");
-
-  // For debug
-  cout << "press any keys to continue";
-  cin.get();
 
   // Setting default parameters for PointToPoint links and channels
   Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("1Mbps"));
@@ -72,19 +61,24 @@ main(int argc, char* argv[])
   for (leo::Topo topo : topos) {
     p2p.Install(nodes.Get(topo.m_uid_1), nodes.Get(topo.m_uid_2));
   }
+  ndn::StackHelper ndnHelper;
+  ndnHelper.Install(nodes);
 
   // Setting up FIB schedules
 
   cout << "Setting up FIB schedules..."  << endl;
   // Install NDN stack on all nodes
-  ndn::StackHelper ndnHelper;
-  ndnHelper.Install(nodes);
-  
+  leo::importDynamicState(nodes, "data/dynamic_state_100ms_for_500s");
+
+  // For debug
+  cout << "press any keys to continue";
+  cin.get();
+
   // Set up FIB 
   std::string prefix = "sat";
   // TODO: Temporary all routes
-  ndnHelper.SetDefaultRoutes(true);
-  ndnHelper.InstallAll();
+  // ndnHelper.SetDefaultRoutes(true);
+  // ndnHelper.InstallAll();
   // ndn::FibHelper::AddRoute(nodes.Get(0), "/prefix",nodes.Get(1), 5);
   // ndn::FibHelper::AddRoute(nodes.Get(1), "/prefix", nodes.Get(2), 5);
   // Simulator::Schedule(Seconds(3.0), &RemoveRouteAB, nodes.Get(0), "/prefix", nodes.Get(1));
@@ -95,14 +89,14 @@ main(int argc, char* argv[])
   // Consumer
   ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   // Consumer will request /prefix/0, /prefix/1, ...
-  consumerHelper.SetPrefix("prefix");
+  consumerHelper.SetPrefix("/uid-" + node1);
   consumerHelper.SetAttribute("Frequency", StringValue("2")); // 10 interests a second
   consumerHelper.Install(nodes.Get(node1));                        // first node
 
   // Producer
   ndn::AppHelper producerHelper("ns3::ndn::Producer");
   // Producer will reply to all requests starting with /prefix
-  producerHelper.SetPrefix("/prefix");
+  producerHelper.SetPrefix("/uid-" + node1);
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
   producerHelper.Install(nodes.Get(node2)); // last node
 
