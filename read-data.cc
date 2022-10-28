@@ -7,6 +7,7 @@
 #include <boost/algorithm/string.hpp>
 #include "model/ground-station.h"
 #include "model/tle.h"
+#include "model/topo.h"
 
 using namespace std;
 
@@ -60,6 +61,22 @@ vector<leo::Tle> readTles(string fname)
     cout << "Imported " << Tles.size() << " TLEs from " << fname << endl;
     if (!Tles.empty()) cout << "ID(s): " << Tles[0].m_uid << " <--> "<< Tles [Tles.size() - 1].m_uid << endl;
     return Tles;
+}
+
+vector<leo::Topo> readIsls(string fname)
+{
+    vector<leo::Topo> topo; 
+    ifstream input( fname );
+    string line;
+    while(getline(input, line))
+    {
+        int uid_1;
+        int uid_2;
+        input >> uid_1 >> uid_2;
+        topo.emplace_back(leo::Topo(uid_1, uid_2));
+    }
+    cout << "Imported " << topo.size() << " topologies from " << fname << endl;
+    return topo;
 }
 
 }

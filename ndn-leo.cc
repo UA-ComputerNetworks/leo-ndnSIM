@@ -16,11 +16,14 @@ main(int argc, char* argv[])
 {
   // Loading data
   // Importing TLEs
-  vector<leo::Tle> Tles = leo::readTles("data/tles.txt");
+  vector<leo::Tle> tles = leo::readTles("data/tles.txt");
   
   // Importing ground stations
   vector<leo::GroundStation> groundStations = 
-    leo::readGroundStations("data/ground_stations.txt", Tles.size());
+    leo::readGroundStations("data/ground_stations.txt", tles.size());
+
+  // Importing topology
+  vector<leo::Topo> topo = leo::readIsls("data/isls.txt");
 
   // For debug
   cout << "press any keys to continue";
@@ -37,21 +40,24 @@ main(int argc, char* argv[])
 
   // Creating nodes
   NodeContainer nodes;
-  nodes.Create(3);
+  nodes.Create(tles.size() + groundStations.size());
 
   // Connecting nodes using two links
   PointToPointHelper p2p;
   p2p.Install(nodes.Get(0), nodes.Get(1));
   p2p.Install(nodes.Get(1), nodes.Get(2));
 
-  // Set up FIB 
-  std::string prefix = "sat";
-  // TODO
 
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
-  ndnHelper.SetDefaultRoutes(true);
-  ndnHelper.InstallAll();
+  ndnHelper.Install(nodes);
+  
+  // Set up FIB 
+  std::string prefix = "sat";
+  // TODO
+  ndn::FibHelper::AddRoute(nodes.Get(0), "/prefix",nodes.Get(1), 5);
+  ndn::FibHelper::AddRoute(nodes.Get(1), "/prefix", nodes.Get(2), 5);
+  // ndn::FibHelper::RemoveRoute(nodes.Get(1), "/prefix", nodes.Get(2));
 
   // Installing applications
 
@@ -70,10 +76,10 @@ main(int argc, char* argv[])
   producerHelper.Install(nodes.Get(2)); // last node
 
   // The failure of the link connecting consumer and router will start from seconds 10.0 to 15.0
-  Simulator::Schedule(Seconds(10.0), ndn::LinkControlHelper::FailLink, nodes.Get(0), nodes.Get(1));
-  Simulator::Schedule(Seconds(15.0), ndn::LinkControlHelper::UpLink, nodes.Get(0), nodes.Get(1));
+  // Simulator::Schedule(Seconds(10.0), ndn::LinkControlHelper::FailLink, nodes.Get(0), nodes.Get(1));
+  // Simulator::Schedule(Seconds(15.0), ndn::LinkControlHelper::UpLink, nodes.Get(0), nodes.Get(1));
 
-  Simulator::Stop(Seconds(20.0));
+  Simulator::Stop(Seconds(5.0));
 
   Simulator::Run();
   Simulator::Destroy();
