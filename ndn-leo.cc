@@ -50,28 +50,28 @@ main(int argc, char* argv[])
 
   // Creating nodes
   NodeContainer nodes;
-  // nodes.Create(tles.size() + ground_stations.size());
-  nodes.Create(3);
+  nodes.Create(tles.size() + ground_stations.size());
 
   // Connecting nodes using imported topology
   const int node1 = 35 + tles.size(); // 35,Krung-Thep-(Bangkok)
   const int node2 = 20 + tles.size(); // 20, Los-Angeles-Long-Beach-Santa-Ana
 
   PointToPointHelper p2p;
-  p2p.Install(nodes.Get(0), nodes.Get(1));
-  p2p.Install(nodes.Get(1), nodes.Get(2));
-  // Attaching all satellite to ground stations
 
-  // cout << "Installing links..." << endl;
-  // for (leo::GroundStation gs : ground_stations) {
-  //   for (leo::Tle sat : tles) {
-  //     p2p.Install(nodes.Get(gs.m_uid), nodes.Get(sat.m_uid));
-  //   }
-  // }
-  // // Attaching links between satellites
-  // for (leo::Topo topo : topos) {
-  //   p2p.Install(nodes.Get(topo.m_uid_1), nodes.Get(topo.m_uid_2));
-  // }
+  // TODO: Will be significantly faster to use real connections
+  cout << "Installing ground station <--> satellite links..." << endl;
+  // Attaching all satellite to ground stations
+  for (leo::GroundStation gs : ground_stations) {
+    for (leo::Tle sat : tles) {
+      p2p.Install(nodes.Get(gs.m_uid), nodes.Get(sat.m_uid));
+    }
+  }
+  
+  cout << "Installing links between satellites..." << endl;
+  // Attaching links between satellites
+  for (leo::Topo topo : topos) {
+    p2p.Install(nodes.Get(topo.m_uid_1), nodes.Get(topo.m_uid_2));
+  }
 
   // Setting up FIB schedules
 
@@ -82,9 +82,12 @@ main(int argc, char* argv[])
   
   // Set up FIB 
   std::string prefix = "sat";
-  // TODO
-  ndn::FibHelper::AddRoute(nodes.Get(0), "/prefix",nodes.Get(1), 5);
-  ndn::FibHelper::AddRoute(nodes.Get(1), "/prefix", nodes.Get(2), 5);
+  // TODO: Temporary all routes
+  ndnHelper.SetDefaultRoutes(true);
+  ndnHelper.InstallAll();
+  // ndn::FibHelper::AddRoute(nodes.Get(0), "/prefix",nodes.Get(1), 5);
+  // ndn::FibHelper::AddRoute(nodes.Get(1), "/prefix", nodes.Get(2), 5);
+  // Simulator::Schedule(Seconds(3.0), &RemoveRouteAB, nodes.Get(0), "/prefix", nodes.Get(1));
   
 
   // Installing applications
@@ -92,22 +95,22 @@ main(int argc, char* argv[])
   // Consumer
   ndn::AppHelper consumerHelper("ns3::ndn::ConsumerCbr");
   // Consumer will request /prefix/0, /prefix/1, ...
-  consumerHelper.SetPrefix("/prefix");
-  consumerHelper.SetAttribute("Frequency", StringValue("10")); // 10 interests a second
-  consumerHelper.Install(nodes.Get(0));                        // first node
+  consumerHelper.SetPrefix("prefix");
+  consumerHelper.SetAttribute("Frequency", StringValue("2")); // 10 interests a second
+  consumerHelper.Install(nodes.Get(node1));                        // first node
 
   // Producer
   ndn::AppHelper producerHelper("ns3::ndn::Producer");
   // Producer will reply to all requests starting with /prefix
   producerHelper.SetPrefix("/prefix");
   producerHelper.SetAttribute("PayloadSize", StringValue("1024"));
-  producerHelper.Install(nodes.Get(2)); // last node
+  producerHelper.Install(nodes.Get(node2)); // last node
 
   // The failure of the link connecting consumer and router will start from seconds 10.0 to 15.0
   // Simulator::Schedule(Seconds(10.0), ndn::LinkControlHelper::FailLink, nodes.Get(0), nodes.Get(1));
   // Simulator::Schedule(Seconds(15.0), ndn::LinkControlHelper::UpLink, nodes.Get(0), nodes.Get(1));
   std::string prefix2 = "/prefix";
-  Simulator::Schedule(Seconds(3.0), &RemoveRouteAB, nodes.Get(0), "/prefix", nodes.Get(1));
+
   
   Simulator::Stop(Seconds(5.0));
 
