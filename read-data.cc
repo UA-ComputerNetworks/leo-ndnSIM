@@ -75,7 +75,7 @@ vector<leo::Topo> readIsls(string fname)
         input >> uid_1 >> uid_2;
         topo.emplace_back(leo::Topo(uid_1, uid_2));
     }
-    cout << "Imported " << topo.size() << " topologies from " << fname << endl;
+    cout << "Imported " << topo.size() << " topology entries from " << fname << endl;
     return topo;
 }
 

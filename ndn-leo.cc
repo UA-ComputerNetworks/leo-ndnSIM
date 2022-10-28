@@ -4,12 +4,22 @@
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/ndnSIM-module.h"
+#include "ns3/names.h"
 #include "read-data.h"
 
 // for LinkStatusControl::FailLinks and LinkStatusControl::UpLinks
 #include "ns3/ndnSIM/helper/ndn-link-control-helper.hpp"
+// for FibHelper::AddRoute and FibHelper::RemoveRoute
+#include "ns3/ndnSIM/helper/ndn-fib-helper.hpp"
 
 namespace ns3 {
+
+// Explicitly pick an overloaded function for Schedule
+static void
+RemoveRouteAB (Ptr<Node> node, string prefix, Ptr<Node> otherNode)
+{
+  ndn::FibHelper::RemoveRoute(node, prefix, otherNode);
+}
 
 int
 main(int argc, char* argv[])
@@ -19,11 +29,11 @@ main(int argc, char* argv[])
   vector<leo::Tle> tles = leo::readTles("data/tles.txt");
   
   // Importing ground stations
-  vector<leo::GroundStation> groundStations = 
+  vector<leo::GroundStation> ground_stations = 
     leo::readGroundStations("data/ground_stations.txt", tles.size());
 
   // Importing topology
-  vector<leo::Topo> topo = leo::readIsls("data/isls.txt");
+  vector<leo::Topo> topos = leo::readIsls("data/isls.txt");
 
   // For debug
   cout << "press any keys to continue";
@@ -40,14 +50,32 @@ main(int argc, char* argv[])
 
   // Creating nodes
   NodeContainer nodes;
-  nodes.Create(tles.size() + groundStations.size());
+  // nodes.Create(tles.size() + ground_stations.size());
+  nodes.Create(3);
 
-  // Connecting nodes using two links
+  // Connecting nodes using imported topology
+  const int node1 = 35 + tles.size(); // 35,Krung-Thep-(Bangkok)
+  const int node2 = 20 + tles.size(); // 20, Los-Angeles-Long-Beach-Santa-Ana
+
   PointToPointHelper p2p;
   p2p.Install(nodes.Get(0), nodes.Get(1));
   p2p.Install(nodes.Get(1), nodes.Get(2));
+  // Attaching all satellite to ground stations
 
+  // cout << "Installing links..." << endl;
+  // for (leo::GroundStation gs : ground_stations) {
+  //   for (leo::Tle sat : tles) {
+  //     p2p.Install(nodes.Get(gs.m_uid), nodes.Get(sat.m_uid));
+  //   }
+  // }
+  // // Attaching links between satellites
+  // for (leo::Topo topo : topos) {
+  //   p2p.Install(nodes.Get(topo.m_uid_1), nodes.Get(topo.m_uid_2));
+  // }
 
+  // Setting up FIB schedules
+
+  cout << "Setting up FIB schedules..."  << endl;
   // Install NDN stack on all nodes
   ndn::StackHelper ndnHelper;
   ndnHelper.Install(nodes);
@@ -57,7 +85,7 @@ main(int argc, char* argv[])
   // TODO
   ndn::FibHelper::AddRoute(nodes.Get(0), "/prefix",nodes.Get(1), 5);
   ndn::FibHelper::AddRoute(nodes.Get(1), "/prefix", nodes.Get(2), 5);
-  // ndn::FibHelper::RemoveRoute(nodes.Get(1), "/prefix", nodes.Get(2));
+  
 
   // Installing applications
 
@@ -78,7 +106,9 @@ main(int argc, char* argv[])
   // The failure of the link connecting consumer and router will start from seconds 10.0 to 15.0
   // Simulator::Schedule(Seconds(10.0), ndn::LinkControlHelper::FailLink, nodes.Get(0), nodes.Get(1));
   // Simulator::Schedule(Seconds(15.0), ndn::LinkControlHelper::UpLink, nodes.Get(0), nodes.Get(1));
-
+  std::string prefix2 = "/prefix";
+  Simulator::Schedule(Seconds(3.0), &RemoveRouteAB, nodes.Get(0), "/prefix", nodes.Get(1));
+  
   Simulator::Stop(Seconds(5.0));
 
   Simulator::Run();
