@@ -11,14 +11,23 @@ namespace leo
 {
 
 // Explicitly pick an overloaded function for Schedule
-void RemoveRouteAB (ns3::Ptr<ns3::Node> node, string prefix, ns3::Ptr<ns3::Node> otherNode);
-void AddRouteAB (ns3::Ptr<ns3::Node> node, string prefix, ns3::Ptr<ns3::Node> otherNode, int metric);
+void RemoveRouteAB (ns3::Ptr<ns3::Node> node, std::string prefix, ns3::Ptr<ns3::Node> otherNode);
+void AddRouteAB (ns3::Ptr<ns3::Node> node, std::string prefix, ns3::Ptr<ns3::Node> otherNode, int metric);
+struct pairhash {
+public:
+  template <typename T, typename U>
+  std::size_t operator()(const std::pair<T, U> &x) const
+  {
+    return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
+  }
+};
 
-std::vector<leo::GroundStation> readGroundStations(string fname);
-std::vector<leo::GroundStation> readGroundStations(string fname, int offset);
-std::vector<leo::Tle> readTles(string fname);
-std::vector<leo::Topo> readIsls(string fname);
-void importDynamicState(ns3::NodeContainer nodes, string dname);
+std::vector<leo::GroundStation> readGroundStations(std::string fname);
+std::vector<leo::GroundStation> readGroundStations(std::string fname, int offset);
+std::vector<leo::Tle> readTles(std::string fname);
+std::unordered_set<std::pair<int,int>, pairhash > populateTopology(std::string dname);
+std::vector<leo::Topo> readIsls(std::string fname);
+void importDynamicState(ns3::NodeContainer nodes, std::string dname);
 
 }
 

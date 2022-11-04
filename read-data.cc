@@ -7,10 +7,11 @@
 #include <vector>
 #include <string>
 #include <regex>
-#include <set>
+#include <unordered_set>
 #include <tuple>
 #include <boost/algorithm/string.hpp>
 #include "model/ground-station.h"
+#include "read-data.h"
 #include "model/tle.h"
 #include "model/topo.h"
 #include "ns3/network-module.h"
@@ -82,6 +83,31 @@ vector<leo::Tle> readTles(string fname)
     return Tles;
 }
 
+unordered_set<pair<int,int>, leo::pairhash> populateTopology(string dname) {
+    unordered_set<pair<int, int>, leo::pairhash> topos;
+    for (const auto & entry : filesystem::directory_iterator(dname)) {
+        string full_path = entry.path();
+
+        // Add RemoveRoute schedule by emptying temporary set
+        int current_node;
+        int next_hop;
+
+        // Read each file
+        ifstream input(full_path);
+        string line;
+        while(getline(input, line))
+        {
+            vector<string> result;
+            boost::split(result, line, boost::is_any_of(","));
+            current_node = stoi(result[0]);
+            next_hop = stoi(result[2]);
+            pair<int,int> p = current_node > next_hop? make_pair(next_hop, current_node): make_pair(current_node, next_hop);
+            topos.insert(p);
+        }
+    }
+    return topos;
+}
+
 vector<leo::Topo> readIsls(string fname)
 {
     vector<leo::Topo> topo; 
@@ -127,6 +153,7 @@ void importDynamicState(ns3::NodeContainer nodes, string dname) {
             // Add AddRoute schedule
             prefix = "/uid-" + result[1];
             // cout << current_node << ", " << prefix << ", " << next_hop << endl;
+            // AddRouteAB(nodes.Get(current_node), prefix, nodes.Get(next_hop), 1);
             ns3::Simulator::Schedule(ns3::MilliSeconds(ms), &AddRouteAB, nodes.Get(current_node), prefix, nodes.Get(next_hop), 1);
         }
     }
